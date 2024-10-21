@@ -152,7 +152,7 @@ class CBSState:
             # add cost to sum
             self._cost += cost
 
-        # return self._paths, self._cost # for debugging
+        return self._paths, self._cost  # for debugging
 
         pass
 
@@ -161,13 +161,47 @@ class CBSState:
         Verifies whether a CBS state is a solution. If it isn't, it returns False and a tuple with
         the conflicting state and time step; returns True, None otherwise.
         """
-        pass
+        # loop through solution steps and check if any of the agents are at the same
+        # state during the same time step
+
+        # for each time step
+        valid_solution = True
+        time_step = 0
+        agents_finished = 0
+        conflict_tuple = None
+
+        while agents_finished < self._k:
+            step_set = set()
+            agents_finished = 0
+            # for each agent
+            for i in range(0, self._k):
+                # check if agent has a state in this time
+                if time_step < len(self._paths[i]):
+                    # get state of agent
+                    current_state = self._paths[i][time_step]
+                    # if so, check if any other agent is there at the same time
+                    if current_state in step_set:
+                        # add constraint
+                        conflict_tuple = (current_state, current_state.get_g())
+                        valid_solution = False
+                    else:
+                        step_set.add(current_state)
+                else:
+                    agents_finished += 1
+            time_step += 1
+        return valid_solution, conflict_tuple
 
     def successors(self):
         """
         Generates the two children of a CBS state that doesn't represent a solution.
         """
-        pass
+        successors_list = []
+        valid, conflict_tuple = self.is_solution()
+        if conflict_tuple is not None and valid is False:
+            # we have to return a list of two state instances
+            #find agents that were in state 
+
+        return successors_list
 
     def set_constraint(self, conflict_state, conflict_time, agent):
         """
