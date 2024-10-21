@@ -31,7 +31,8 @@ def main():
     goals = [State(4, 1), State(2, 1)]
     cbs_state = CBSState(gridded_map, starts, goals)
     paths, cost = cbs_state.compute_cost()  # for test/debugging
-    valid, conflict_tuple = cbs_state.is_solution()
+    valid, conflict_tuple = cbs_state.is_solution()  # for test/debugging
+    children = cbs_state.successors()
     # cbs_search = CBS()
     # paths, cost = cbs_search.search(cbs_state)
     if paths is not None:
@@ -39,7 +40,14 @@ def main():
         for agent, path in paths.items():
             print(agent, path)
         print(
-            "Cost: ", cost, ", Valid: ", valid, ", Conflict: ", conflict_tuple
+            "Cost: ",
+            cost,
+            ", Valid: ",
+            valid,
+            ", Conflict: ",
+            conflict_tuple,
+            ", Children: ",
+            children,
         )  # added for test/debugging
         print()
 

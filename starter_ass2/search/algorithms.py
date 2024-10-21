@@ -199,7 +199,33 @@ class CBSState:
         valid, conflict_tuple = self.is_solution()
         if conflict_tuple is not None and valid is False:
             # we have to return a list of two state instances
-            #find agents that were in state 
+            # find agents that were in conflict state during conflict time
+            conflict_state = conflict_tuple[0]
+            conflict_time = conflict_tuple[1]
+            agents = []
+            successors_list = []
+            for i in range(0, self._k):
+                # if agent exists during conflict time
+                if conflict_time < len(self._paths[i]):
+                    # if state of agent is the conflict state
+                    if self._paths[i][conflict_time] == conflict_state:
+                        # add agent to list of conflicting agents
+                        agents.append(i)
+
+            if len(agents) >= 2:
+                # if agents exist, initialize them and add them to the list
+                c1 = CBSState(self._map, self._starts, self._goals)
+                c1._constraints = copy.deepcopy(self._constraints)
+                c1.set_constraint(conflict_state, conflict_time, agents[0])
+                successors_list.append(c1)
+
+                c2 = CBSState(self._map, self._starts, self._goals)
+                c2._constraints = copy.deepcopy(self._constraints)
+                c2.set_constraint(conflict_state, conflict_time, agents[1])
+                successors_list.append(c2)
+
+            else:
+                print("error creating childs since not enough conflicting agents found")
 
         return successors_list
 
@@ -217,6 +243,13 @@ class CBSState:
         self._constraints[agent][(conflict_state.get_x(), conflict_state.get_y())].add(
             conflict_time
         )
+
+    def __repr__(self):
+        """
+        This method is invoked when we call a print instruction with a state.
+        """
+        state_str = str(self._constraints)
+        return state_str
 
     def __lt__(self, other):
         """
