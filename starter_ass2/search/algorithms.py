@@ -147,6 +147,10 @@ class CBSState:
             cost, path = astar.search(
                 self._starts[i], self._goals[i], self._constraints[i]
             )
+            # if a star doesnt find solution for some agent with given constraints
+            if cost == -1:
+                self._cost = -1
+                return None, -1
             # store each agent solution path in self._paths[i]
             self._paths[i] = path
             # add cost to sum
@@ -244,6 +248,12 @@ class CBSState:
             conflict_time
         )
 
+    def get_paths(self):
+        """
+        Returns a list of lists with the paths of agent i at index i-1
+        """
+        return self._paths
+
     def __repr__(self):
         """
         This method is invoked when we call a print instruction with a state.
@@ -275,6 +285,26 @@ class CBS:
         """
         Performs CBS search for the problem defined in start.
         """
+        #check if problem doesnt have a solution
+        start.compute_cost()
+        if start.get_cost() == -1:
+            return None, None
+        #initialize open list
+        OPEN = []
+        heapq.heappush(OPEN, start)
+        while len(OPEN) > 0:
+            node = heapq.heappop(OPEN)
+            #check if node is a solution
+            valid_solution, conflict_state = node.is_solution()
+            if valid_solution:
+                #return paths of agents and cost
+                return node.get_paths(), node.get_cost()
+            #if not solution, get kids and their costs
+            children = node.successors()
+            for child in children:
+                child.compute_cost()
+                if child.get_cost() != -1:
+                    heapq.heappush(OPEN, child)
         return None, None
 
 

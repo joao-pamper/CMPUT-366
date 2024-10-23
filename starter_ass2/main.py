@@ -30,45 +30,36 @@ def main():
     starts = [State(1, 1), State(5, 1)]
     goals = [State(4, 1), State(2, 1)]
     cbs_state = CBSState(gridded_map, starts, goals)
-    paths, cost = cbs_state.compute_cost()  # for test/debugging
-    valid, conflict_tuple = cbs_state.is_solution()  # for test/debugging
-    children = cbs_state.successors()
-    # cbs_search = CBS()
-    # paths, cost = cbs_search.search(cbs_state)
+    #paths, cost = cbs_state.compute_cost()  # for test/debugging
+    # valid, conflict_tuple = cbs_state.is_solution()  # for test/debugging
+    # children = cbs_state.successors() # for test/debugging
+    cbs_search = CBS()
+    paths, cost = cbs_search.search(cbs_state)
     if paths is not None:
         print("Solution paths encountered for the easy test: ")
         for agent, path in paths.items():
             print(agent, path)
-        print(
-            "Cost: ",
-            cost,
-            ", Valid: ",
-            valid,
-            ", Conflict: ",
-            conflict_tuple,
-            ", Children: ",
-            children,
-        )  # added for test/debugging
+        #print("Cost: ", cost, ", Valid: ", valid, ", Conflict: ", conflict_tuple, ", Children: ", children,)  # added for test/debugging
         print()
 
-    # name_map = "dao-map/den009d.map"
-    # test_instances = "test-instances/test_problems_den009d.txt"
+    name_map = "dao-map/den009d.map"
+    test_instances = "test-instances/test_problems_den009d.txt"
 
-    # problems = read_instances(test_instances)
-    # gridded_map = Map(name_map)
-    # for problem in problems:
-    #     cbs_state = CBSState(gridded_map, problem[0], problem[1])
-    #     cbs_search = CBS()
-    #     _, cost = cbs_search.search(cbs_state)
+    problems = read_instances(test_instances)
+    gridded_map = Map(name_map)
+    for problem in problems:
+        cbs_state = CBSState(gridded_map, problem[0], problem[1])
+        cbs_search = CBS()
+        _, cost = cbs_search.search(cbs_state)
 
-    #     if cost != problem[2]:
-    #         print('There was a mismatch for problem: ')
-    #         print(problem)
-    #         print('Expected: ', problem[2])
-    #         print('Obtained: ', cost)
-    #         print()
-    #     else:
-    #         print('Correctly Solved: ', problem[2], cost)
+        if cost != problem[2]:
+            print('There was a mismatch for problem: ')
+            print(problem)
+            print('Expected: ', problem[2])
+            print('Obtained: ', cost)
+            print()
+        else:
+            print('Correctly Solved: ', problem[2], cost)
 
 
 if __name__ == "__main__":
