@@ -30,20 +30,21 @@ def main():
     starts = [State(1, 1), State(5, 1)]
     goals = [State(4, 1), State(2, 1)]
     cbs_state = CBSState(gridded_map, starts, goals)
-    #paths, cost = cbs_state.compute_cost()  # for test/debugging
-    # valid, conflict_tuple = cbs_state.is_solution()  # for test/debugging
-    # children = cbs_state.successors() # for test/debugging
     cbs_search = CBS()
     paths, cost = cbs_search.search(cbs_state)
     if paths is not None:
         print("Solution paths encountered for the easy test: ")
         for agent, path in paths.items():
             print(agent, path)
-        #print("Cost: ", cost, ", Valid: ", valid, ", Conflict: ", conflict_tuple, ", Children: ", children,)  # added for test/debugging
         print()
 
+    #original map to be tested on
     name_map = "dao-map/den009d.map"
     test_instances = "test-instances/test_problems_den009d.txt"
+
+    # other map
+    # name_map = "dao-map/combat2.map"
+    # test_instances = "test-instances/instances.txt"
 
     problems = read_instances(test_instances)
     gridded_map = Map(name_map)

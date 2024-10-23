@@ -156,10 +156,6 @@ class CBSState:
             # add cost to sum
             self._cost += cost
 
-        return self._paths, self._cost  # for debugging
-
-        pass
-
     def is_solution(self):
         """
         Verifies whether a CBS state is a solution. If it isn't, it returns False and a tuple with
@@ -202,7 +198,6 @@ class CBSState:
         successors_list = []
         valid, conflict_tuple = self.is_solution()
         if conflict_tuple is not None and valid is False:
-            # we have to return a list of two state instances
             # find agents that were in conflict state during conflict time
             conflict_state = conflict_tuple[0]
             conflict_time = conflict_tuple[1]
