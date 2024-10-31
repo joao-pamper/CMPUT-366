@@ -102,14 +102,49 @@ def search(target_program, neighborhood_function, num_neighbors, max_tick, map):
         pgs = PhysicalGameState.load(map, utt)
         gs = GameState(pgs, utt)
 
-        prog = ScriptsToy.scriptEmpty()
+        prog = ScriptsToy.scriptEmpty() #initial candidate solution
         seed_search = prog
         best_eval, best_auxiliary = evaluate(prog, target_program, gs, max_tick)
         total_number_evaluations = 0
 
         # continue implementation from here
+        best_prog = seed_search
+        updated_prog = True
+        while best_eval != 1:
+            if not updated_prog:
+                print("Reached local optimum at eval:", total_number_evaluations)
+                #return best_prog, total_number_evaluations
+            updated_prog = False
+            # get neighbors
+            prog_neighbors = neighborhood_function.get_neighbors(best_prog, num_neighbors) # returns list of neighbors
+            
+            # iterate through all neighbours to find the best one
+            for candidate_prog in prog_neighbors:
+                candidate_eval, candidate_auxiliary = evaluate(candidate_prog, target_program, gs, max_tick)
+                total_number_evaluations += 1
+
+                if total_number_evaluations % 5 == 0:
+                    print("Eval:", total_number_evaluations)
+                # if candidate_eval == 1: #if candidate is a dominant solution
+                #     return candidate_prog, total_number_evaluations
+                
+                if (candidate_eval > best_eval):
+                    best_eval = candidate_eval
+                    best_auxiliary = candidate_auxiliary
+                    best_prog = candidate_prog
+
+                    updated_prog = True
+                    if best_eval == 1:
+                        print("found winner at eval:", total_number_evaluations)
+                        return best_prog, total_number_evaluations
+                
+                elif (candidate_eval == best_eval) and (candidate_auxiliary > best_auxiliary):
+                    best_eval = candidate_eval
+                    best_auxiliary = candidate_auxiliary
+                    best_prog = candidate_prog
+                    updated_prog = True
         
-        return None, total_number_evaluations
+        return best_prog, total_number_evaluations
 
 if __name__ == "__main__":
     random.seed(42)
