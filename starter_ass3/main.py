@@ -159,11 +159,6 @@ def search(target_program, neighborhood_function, num_neighbors, max_tick, map):
             best_local_prog = seed_search
             improved_local = True
 
-            print("Starting HC")
-            print("Best eval:", best_overall_eval)
-            print("Best auxiliary:", best_overall_auxiliary) 
-            print()
-
             while improved_local:
                 improved_local = False
                 prog_candidates = neighborhood_function.get_neighbors(best_local_prog, num_neighbors)
@@ -180,18 +175,9 @@ def search(target_program, neighborhood_function, num_neighbors, max_tick, map):
                         if best_local_eval == 1.0:
                             best_overall_prog = best_local_prog
                             return best_overall_prog, total_number_evaluations  
-                print("Finished looking at all neighbours")
-                print("Improved program:", improved_local)
-                print("Best eval found:", best_local_eval)   
-                print("Best auxiliary found:", best_local_auxiliary)  
-                print()
             
             if (best_local_eval > best_overall_eval) or ((best_local_eval == best_overall_eval) and (best_local_auxiliary > best_overall_auxiliary)):
                 best_overall_eval, best_overall_prog, best_overall_auxiliary = best_local_eval, best_local_prog, best_local_auxiliary
-            print("Finished HC")
-            print("Best eval found:", best_local_eval)
-            print("Best auxiliary found:", best_local_auxiliary) 
-            print()
 
         return best_overall_prog, total_number_evaluations
 
