@@ -14,6 +14,56 @@ from synthesis.baseDSL.tests.scriptsToy import ScriptsToy
 from synthesis.baseDSL.util.control import Control
 from synthesis.baseDSL.util.factory_Base import Factory_Base
 from synthesis.extent1DSL.neighborhood_functions.neighborhood import Neighborhood
+#OLD
+# def playout(gs_a, ai0, ai1, player, max_tick, show_screen, assistant_evaluator):
+#     gs = gs_a.clone()
+#     ai0.reset()
+#     ai1.reset()
+#     if assistant_evaluator!=None: 
+#         assistant_evaluator.reset()
+
+#     if show_screen:
+#         screen = ScreenMicroRTS(gs)
+#     show = True
+    
+#     while not gs.gameover() and gs.getTime()<max_tick:
+#         if assistant_evaluator!=None:
+#             assistant_evaluator.analysis(gs,player,False)
+#         if show and show_screen:
+#                 screen.draw()
+#                 time.sleep(0.1) 
+
+#         ini_time = time.time()
+#         try:
+#             pa0 :  PlayerAction =ai0.getActions(gs,player)
+#         except Exception as e:
+#             return 1-player  , -1
+#         timeP0 = time.time()- ini_time
+        
+#         ini_time = time.time()  
+#         pa1 = ai1.getActions(gs,1 -player)
+#         timeP1 = time.time()- ini_time
+        
+#         if timeP0>0.110 and timeP1>0.110:
+#             return -1,-1
+#         elif timeP0>0.110 :
+#             return 1- player,-1
+#         elif timeP1>0.110:
+#             return player,-1
+        
+#         if show_screen: show = gs.updateScreen()
+            
+#         gs.issueSafe(pa0)
+#         gs.issueSafe(pa1)      
+#         gs.cycle()
+#     if assistant_evaluator!=None:
+#         assistant_evaluator.analysis(gs,player,True)
+        
+#     if assistant_evaluator!=None:   
+
+#         return gs.winner() ,assistant_evaluator.getValue()
+    
+#     return gs.winner(), 0
 
 def playout(gs_a, ai0, ai1, player, max_tick, show_screen, assistant_evaluator):
     gs = gs_a.clone()
@@ -33,23 +83,12 @@ def playout(gs_a, ai0, ai1, player, max_tick, show_screen, assistant_evaluator):
                 screen.draw()
                 time.sleep(0.1) 
 
-        ini_time = time.time()
         try:
             pa0 :  PlayerAction =ai0.getActions(gs,player)
         except Exception as e:
             return 1-player  , -1
-        timeP0 = time.time()- ini_time
-        
-        ini_time = time.time()  
+
         pa1 = ai1.getActions(gs,1 -player)
-        timeP1 = time.time()- ini_time
-        
-        if timeP0>0.110 and timeP1>0.110:
-            return -1,-1
-        elif timeP0>0.110 :
-            return 1- player,-1
-        elif timeP1>0.110:
-            return player,-1
         
         if show_screen: show = gs.updateScreen()
             
@@ -97,54 +136,72 @@ def visualize_game(program_1, program_2):
 
     print("Winner = ", win[0] + 1)
 
-def search(target_program, neighborhood_function, num_neighbors, max_tick, map):
+def search(target_program, neighborhood_function, num_neighbors, max_tick, map, best_overall_prog):
         utt = UnitTypeTable(2)
         pgs = PhysicalGameState.load(map, utt)
         gs = GameState(pgs, utt)
 
-        prog = ScriptsToy.scriptEmpty() #initial candidate solution
-        seed_search = prog
-        best_eval, best_auxiliary = evaluate(prog, target_program, gs, max_tick)
+        if random.random() > 0.5:
+            prog = ScriptsToy.scriptEmpty()
+            seed_search = prog
+        else:
+            seed_search = best_overall_prog
+        
+        best_eval, best_auxiliary = evaluate(seed_search, target_program, gs, max_tick)
         total_number_evaluations = 0
 
         # continue implementation from here
         best_prog = seed_search
         updated_prog = True
-        while best_eval != 1:
+        print("best eval before while loop and its type:", best_eval, type(best_eval))
+        print(best_prog.translate())
+        while best_eval != 1.0:
             if not updated_prog:
-                print("Reached local optimum at eval:", total_number_evaluations)
-                #return best_prog, total_number_evaluations
+                print("Reached local optimum at eval:", total_number_evaluations, best_eval)
+                print(best_prog.translate())
+                return best_prog, total_number_evaluations, best_eval
             updated_prog = False
-            # get neighbors
+            
             prog_neighbors = neighborhood_function.get_neighbors(best_prog, num_neighbors) # returns list of neighbors
             
-            # iterate through all neighbours to find the best one
             for candidate_prog in prog_neighbors:
                 candidate_eval, candidate_auxiliary = evaluate(candidate_prog, target_program, gs, max_tick)
                 total_number_evaluations += 1
-
-                if total_number_evaluations % 5 == 0:
-                    print("Eval:", total_number_evaluations)
-                # if candidate_eval == 1: #if candidate is a dominant solution
-                #     return candidate_prog, total_number_evaluations
                 
-                if (candidate_eval > best_eval):
-                    best_eval = candidate_eval
-                    best_auxiliary = candidate_auxiliary
-                    best_prog = candidate_prog
-
-                    updated_prog = True
-                    if best_eval == 1:
-                        print("found winner at eval:", total_number_evaluations)
-                        return best_prog, total_number_evaluations
                 
-                elif (candidate_eval == best_eval) and (candidate_auxiliary > best_auxiliary):
+                if (candidate_eval > best_eval) or ((candidate_eval == best_eval) and (candidate_auxiliary > best_auxiliary)):
+                    print("updated with new eval and auxiliary", candidate_eval, candidate_auxiliary)
                     best_eval = candidate_eval
                     best_auxiliary = candidate_auxiliary
                     best_prog = candidate_prog
                     updated_prog = True
-        
-        return best_prog, total_number_evaluations
+                    
+                    if best_eval == 1.0:
+                        print(best_prog.translate())
+                        return best_prog, total_number_evaluations , best_eval
+                    
+            print("finished looking at neighbors")
+                
+        return best_prog, total_number_evaluations, best_eval
+
+def random_restart_search(target_program, neighborhood_function, num_neighbors, max_tick, map):
+    prog = ScriptsToy.scriptEmpty()
+    restart_evaluations = 0
+    best_prog, total_number_evaluations, best_eval = search(target_program, neighborhood_function, num_neighbors, max_tick, map, prog)
+    
+    restart_evaluations += total_number_evaluations
+    
+    print("RR best eval:", best_eval)
+    
+    while best_eval != 1.0:
+        new_prog, total_number_evaluations, new_eval = search(target_program, neighborhood_function, num_neighbors, max_tick, map, best_prog)
+        restart_evaluations += total_number_evaluations
+        if new_eval > best_eval:
+            best_eval = new_eval 
+            best_prog = new_prog
+
+        print("RR best eval:", best_eval)
+    return best_prog, total_number_evaluations
 
 if __name__ == "__main__":
     random.seed(42)
@@ -161,7 +218,8 @@ if __name__ == "__main__":
     print('Program 1 to be Defeated')
     print(program_target_1.translate())
     print()
-    prog_result, number_evaluations = search(program_target_1, neighborhood_function, num_neighbors, max_tick, map)
+    #prog_result, number_evaluations = search(program_target_1, neighborhood_function, num_neighbors, max_tick, map)
+    prog_result, number_evaluations = random_restart_search(program_target_1, neighborhood_function, num_neighbors, max_tick, map)
     print('Number of evaluations: ', number_evaluations)
     end_time = time.time()
     print('Time required to compute a best response to the first program: ', end_time - start_time)
@@ -174,7 +232,8 @@ if __name__ == "__main__":
     print('Program 2 to be Defeated')
     print(program_target_2.translate())
     print()
-    prog_result, number_evaluations = search(program_target_2, neighborhood_function, num_neighbors, max_tick, map)
+    #prog_result, number_evaluations = search(program_target_2, neighborhood_function, num_neighbors, max_tick, map)
+    prog_result, number_evaluations = random_restart_search(program_target_1, neighborhood_function, num_neighbors, max_tick, map)
     end_time = time.time()
     print('Time required to compute a best response to the second program: ', end_time - start_time)
     print('Number of evaluations: ', number_evaluations)
