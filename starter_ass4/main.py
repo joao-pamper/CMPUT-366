@@ -165,6 +165,10 @@ class Grid:
         for i in range(self._width):
             for j in range(self._width):
                 if len(self._cells[i][j]) > 1 or not self.is_value_consistent(self._cells[i][j], i, j):
+                    # print(f"not solved because of cell at ({i}, {j})")
+                    # print("=========================================")
+                    # self.print()
+                    # print("=========================================")
                     return False
         return True
     
@@ -194,9 +198,15 @@ class FirstAvailable():
     """
     Naïve method for selecting variables; simply returns the first variable encountered whose domain is larger than one.
     """
-    def select_variable(self, grid):
-        # Implement here the first available heuristic
-        pass
+    def select_variable(self, grid: Grid):
+        # loop through domain of variables and return the index 
+        # of the variable whose domain is greater than one
+        for i in range(grid.get_width()):
+            for j in range(grid.get_width()):
+                var_domain = grid.get_cells()[i][j]
+                if len(var_domain) > 1:
+                    return (i, j)
+        return None
 
 class MRV():
     """
@@ -204,7 +214,19 @@ class MRV():
     """
     def select_variable(self, grid):
         # Implement here the mrv heuristic
-        pass
+        # not sure if i should ignore domain == 1 or not.
+        # this implementation below will ignore it.
+        min_index = [None]
+        min_domain = grid.get_width() + 1 # 10
+
+        for i in range(grid.get_width()):
+            for j in range(grid.get_width()):
+                var_domain = len(grid.get_cells()[i][j])
+                if var_domain > 1 and var_domain < min_domain:
+                    min_index.clear()
+                    min_index.append((i, j))
+                    min_domain = var_domain
+        return min_index[0]
 
 
 class AC3:
@@ -279,17 +301,29 @@ class AC3:
                 grid.get_cells()[i][j] = new_domain
         return variables_assigned, False
 
-    def pre_process_consistency(self, grid):
+    def pre_process_consistency(self, grid: Grid):
         """
         This method enforces arc consistency for the initial grid of the puzzle.
 
         The method runs AC3 for the arcs involving the variables whose values are 
         already assigned in the initial grid. 
         """
-        # Implement here the code for making the CSP arc consistent as a pre-processing step; this method should be called once before search
-        pass
+        # Implement here the code for making the CSP arc consistent as a pre-processing step;
+        # this method should be called once before search
+        Q = set()
+        for i in range(grid.get_width()):
+            for j in range(grid.get_width()):
+                var_domain = grid.get_cells()[i][j]
+                if len(var_domain) == 1:
+                    Q.add((i,j))
 
-    def consistency(self, grid, Q):
+        failure = self.consistency(grid, Q)
+        if failure:
+            return Q, True # failure
+        
+        return Q, False # success
+
+    def consistency(self, grid: Grid, Q: set):
         """
         This is a domain-specific implementation of AC3 for Sudoku. 
 
@@ -309,106 +343,82 @@ class AC3:
         partial assignment; the method returns False otherwise. 
         """
         # Implement here the domain-dependent version of AC3.
-        pass
+        while len(Q) > 0:
+            var = Q.pop()
+            i, j = var[0], var[1]
+            var_assigned_row, failure_row = self.remove_domain_row(grid, i, j)
+            var_assigned_col, failure_col = self.remove_domain_column(grid, i, j)
+            var_assigned_unit, failure_unit = self.remove_domain_unit(grid, i, j)
+
+            if failure_row or failure_col or failure_unit:
+                return True # failure
+
+            if len(var_assigned_row) > 0: Q.update(set(var_assigned_row))
+            if len(var_assigned_col) > 0: Q.update(set(var_assigned_col))
+            if len(var_assigned_unit) > 0: Q.update(set(var_assigned_unit))                
+
+        return False # success
 
 class Backtracking:
     """
     Class that implements backtracking search for solving CSPs. 
     """
 
-    def search(self, grid, var_selector):
+    def search(self, grid: Grid, var_selector):
         """
         Implements backtracking search with inference. 
         """
-        # Implemente here the Backtracking search.
-        pass
+        #run ac3
+        ac3 = AC3()
+        assigned_vars, failure1 = ac3.pre_process_consistency(grid)
+        if failure1:
+            return False, grid # sol not found
+        #check if grid is a solution
+        if grid.is_solved():
+            return True, grid # sol found
+        
+        #select next variable assuming grid not a solution
+        var = var_selector.select_variable(grid)
+        i, j = var[0], var[1]
+        
+        #loop through domain of var
+        for d in grid.get_cells()[i][j]:
+            #check if d violates a constraint in the puzzle
+            if grid.is_value_consistent(d, i, j):
+                copy_g = grid.copy()
+                # set d as the domain of the selected variable in copied grid
+                copy_g.get_cells()[i][j] = d
+                # run ac3 after new assignment and before search
+                failure = ac3.consistency(grid, assigned_vars)
+                if failure:
+                    return False, grid # sol not found
+                solution_found, solution_g = self.search(copy_g, var_selector)
+                if solution_found:
+                    return True, solution_g # sol found
+        return False, grid # sol not found
 
 
-file = open('tutorial_problem.txt', 'r')
-# file = open('top95.txt', 'r')
+
+# file = open('tutorial_problem.txt', 'r')
+file = open('top95.txt', 'r')
 problems = file.readlines()
 
-for p in problems:
+
+for i, p in enumerate(problems):
     # Read problem from string
     g = Grid()
     g.read_file(p)
 
-    # Print the grid on the screen
-    print('Puzzle')
-    g.print()
+    backtracking = Backtracking()
+    
+    var_selector = FirstAvailable()
+    #var_selector = MRV()
 
-    # # Print the domains of all variables
-    print('Domains of Variables')
-    g.print_domains()
-    print()
+    rb, g_sol = backtracking.search(g, var_selector)
+    print(f'Problem {i} has a solution according to output? {rb}',)
+    print('Is the current grid a solution? ', g_sol.is_solved())
 
-    # Iterate over domain values
-    for i in range(g.get_width()):
-        for j in range(g.get_width()):
-
-            print('Domain of ', i, j, ': ', g.get_cells()[i][j])
-
-            for d in g.get_cells()[i][j]:
-                print(d, end=' ')
-            print()
-
-    # # Make a copy of a grid
-    copy_g = g.copy()
-
-    print('Copy (copy_g): ')
-    copy_g.print()
-    print()
-
-    print('Original (g): ')
-    g.print()
-    print()
-
-    # # Removing 2 from the domain of the variable in the first row and second column
-    copy_g.get_cells()[0][1] = copy_g.get_cells()[0][1].replace('2', '')
-
-    # # The domain (0, 1) of copy_g shouldn't have 2 (first list, second element)
-    print('copy_g')
-    copy_g.print_domains()
-    print()
-
-    # # The domain of variable g shouldn't have changed though
-    print('g')
-    g.print_domains()
-    print()
-
-    # Instance of AC3 Object
-    ac3 = AC3()
-
-    # Making all variables in the first row arc consistent with (0, 0), whose value is 4
-    variables_assigned, failure = ac3.remove_domain_row(g, 0, 0)
-
-    # The domain of all variables in the first row must not have 4
-    print('Removed all 4s from the first row')
-    g.print_domains()
-
-    # # variables_assigned contains all variables whose domain reduced to size 1 in the remove_domain_row opeation
-    print('Variables that were assigned by remove_domain_row: ', variables_assigned)
-
-    # # failture returns True if any of the variables in the row were reduced to size 0
-    print('Failure: ', failure)
-    print()
-
-    # # Making all variables in the first column arc consistent with (0, 0), whose value is 4
-    variables_assigned, failure = ac3.remove_domain_column(g, 0, 0)
-
-    # # The domain of all variables in the first column must not have 4
-    print('Removed all 4s from the first column')
-    g.print_domains()
-    print()
-
-    # # Making all variables in the first unit arc consistent with (0, 0), whose value is 4
-    variables_assigned, failure = ac3.remove_domain_unit(g, 0, 0)
-
-    # # The domain of all variables in the first column must not have 4
-    print('Removed all 4s from the first unit')
-    g.print_domains()
-    print()
-
-    print('Is the current grid a solution? ', g.is_solved())
+    print("===========================================")
 
 
+print("Solved All !!!!!!!!!!!!")
