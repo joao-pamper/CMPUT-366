@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
 class PlotResults:
     """
@@ -165,14 +166,13 @@ class Grid:
         for i in range(self._width):
             for j in range(self._width):
                 if len(self._cells[i][j]) > 1 or not self.is_value_consistent(self._cells[i][j], i, j):
-                    # print(f"not solved because of cell at ({i}, {j})")
-                    # print("=========================================")
-                    # self.print()
-                    # print("=========================================")
                     return False
         return True
     
     def is_value_consistent(self, value, row, column):
+        """
+        Returns True if new insertion of value is consistent with domain of all other variables.
+        """
         for i in range(self.get_width()):
             if i == column: continue
             if self.get_cells()[row][i] == value:
@@ -199,8 +199,6 @@ class FirstAvailable():
     Naïve method for selecting variables; simply returns the first variable encountered whose domain is larger than one.
     """
     def select_variable(self, grid: Grid):
-        # loop through domain of variables and return the index 
-        # of the variable whose domain is greater than one
         for i in range(grid.get_width()):
             for j in range(grid.get_width()):
                 var_domain = grid.get_cells()[i][j]
@@ -213,11 +211,9 @@ class MRV():
     Implements the MRV heuristic, which returns one of the variables with smallest domain. 
     """
     def select_variable(self, grid):
-        # Implement here the mrv heuristic
-        # not sure if i should ignore domain == 1 or not.
-        # this implementation below will ignore it.
+
         min_index = [None]
-        min_domain = grid.get_width() + 1 # 10
+        min_domain = grid.get_width() + 1
 
         for i in range(grid.get_width()):
             for j in range(grid.get_width()):
@@ -308,20 +304,18 @@ class AC3:
         The method runs AC3 for the arcs involving the variables whose values are 
         already assigned in the initial grid. 
         """
-        # Implement here the code for making the CSP arc consistent as a pre-processing step;
-        # this method should be called once before search
         Q = set()
         for i in range(grid.get_width()):
             for j in range(grid.get_width()):
                 var_domain = grid.get_cells()[i][j]
                 if len(var_domain) == 1:
                     Q.add((i,j))
-
+        
         failure = self.consistency(grid, Q)
         if failure:
-            return Q, True # failure
+            return True # failure
         
-        return Q, False # success
+        return False # success
 
     def consistency(self, grid: Grid, Q: set):
         """
@@ -342,7 +336,6 @@ class AC3:
         The method returns True if AC3 detected that the problem can't be solved with the current
         partial assignment; the method returns False otherwise. 
         """
-        # Implement here the domain-dependent version of AC3.
         while len(Q) > 0:
             var = Q.pop()
             i, j = var[0], var[1]
@@ -357,7 +350,7 @@ class AC3:
             if len(var_assigned_col) > 0: Q.update(set(var_assigned_col))
             if len(var_assigned_unit) > 0: Q.update(set(var_assigned_unit))                
 
-        return False # success
+        return False # not failure
 
 class Backtracking:
     """
@@ -368,57 +361,110 @@ class Backtracking:
         """
         Implements backtracking search with inference. 
         """
-        #run ac3
         ac3 = AC3()
-        assigned_vars, failure1 = ac3.pre_process_consistency(grid)
-        if failure1:
-            return False, grid # sol not found
-        #check if grid is a solution
+        
         if grid.is_solved():
             return True, grid # sol found
-        
-        #select next variable assuming grid not a solution
+
         var = var_selector.select_variable(grid)
         i, j = var[0], var[1]
+        var_domain = grid.get_cells()[i][j]
         
-        #loop through domain of var
-        for d in grid.get_cells()[i][j]:
-            #check if d violates a constraint in the puzzle
+        for d in var_domain:
             if grid.is_value_consistent(d, i, j):
+                Q = set()
+                Q.add((i,j))
+
                 copy_g = grid.copy()
-                # set d as the domain of the selected variable in copied grid
                 copy_g.get_cells()[i][j] = d
-                # run ac3 after new assignment and before search
-                failure = ac3.consistency(grid, assigned_vars)
+
+                failure = ac3.consistency(copy_g, Q) 
                 if failure:
-                    return False, grid # sol not found
+                    continue
+                
                 solution_found, solution_g = self.search(copy_g, var_selector)
                 if solution_found:
                     return True, solution_g # sol found
+                
         return False, grid # sol not found
 
+def main2():
+    #file = open('tutorial_problem.txt', 'r')
+    file = open('top95.txt', 'r')
+    problems = file.readlines()
 
 
-# file = open('tutorial_problem.txt', 'r')
-file = open('top95.txt', 'r')
-problems = file.readlines()
+    for i, p in enumerate(problems):
+        # Read problem from string
+        g = Grid()
+        g.read_file(p)
+
+        backtracking = Backtracking()
+        
+        var_selector = FirstAvailable()
+        #var_selector = MRV()
+
+        ac3 = AC3()
+        failure1 = ac3.pre_process_consistency(g)
+
+        rb, g_sol = backtracking.search(g, var_selector)
+        print(f'Is the current grid a solution to problem {i}? ', g_sol.is_solved(), rb)
+
+    print("Solved All !!!!!!!!!!!!")
+
+import time  # To measure running time
+
+def main():
+    # Open the file with the Sudoku problems
+    file = open('top95.txt', 'r')
+    problems = file.readlines()
+
+    # Lists to store the running times
+    running_time_mrv = []
+    running_time_first_available = []
+
+    for i, p in enumerate(problems):
+        # Read problem from string
+        g = Grid()
+        g.read_file(p)
+
+        # Backtracking setup
+        backtracking = Backtracking()
+        ac3 = AC3()
+
+        # Pre-process the grid with AC3
+        failure = ac3.pre_process_consistency(g)
+
+        # Measure running time for FirstAvailable heuristic
+        var_selector = FirstAvailable()
+        start_time = time.time()
+        rb_fa, g_sol_fa = backtracking.search(g, var_selector)
+        elapsed_time_fa = time.time() - start_time
+        running_time_first_available.append(elapsed_time_fa)
+
+        # Reset the grid for MRV heuristic
+        g = Grid()
+        g.read_file(p)
+
+        # Pre-process the grid with AC3
+        failure = ac3.pre_process_consistency(g)
+        # Measure running time for MRV heuristic
+        var_selector = MRV()
+        start_time = time.time()
+        rb_mrv, g_sol_mrv = backtracking.search(g, var_selector)
+        elapsed_time_mrv = time.time() - start_time
+        running_time_mrv.append(elapsed_time_mrv)
+
+        # Print results for debugging
+        print(f"Problem {i} solved? FA: {g_sol_fa.is_solved()} (Time: {elapsed_time_fa:.4f}s), "
+              f"MRV: {g_sol_mrv.is_solved()} (Time: {elapsed_time_mrv:.4f}s)")
+
+    # Plot the results
+    plotter = PlotResults()
+    plotter.plot_results(running_time_mrv, running_time_first_available,
+                         "Running Time Backtracking (MRV)",
+                         "Running Time Backtracking (FA)", "running_time")
 
 
-for i, p in enumerate(problems):
-    # Read problem from string
-    g = Grid()
-    g.read_file(p)
-
-    backtracking = Backtracking()
-    
-    var_selector = FirstAvailable()
-    #var_selector = MRV()
-
-    rb, g_sol = backtracking.search(g, var_selector)
-    print(f'Problem {i} has a solution according to output? {rb}',)
-    print('Is the current grid a solution? ', g_sol.is_solved())
-
-    print("===========================================")
-
-
-print("Solved All !!!!!!!!!!!!")
+if __name__ == "__main__":
+    main()
